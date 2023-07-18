@@ -10,7 +10,6 @@ from .allocation_query import AllocationQuery
 if TYPE_CHECKING:
     from ..fields.base import Field
 
-
 class Operation(ABC):
 
     def __init__(self):

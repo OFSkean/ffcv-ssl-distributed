@@ -18,7 +18,6 @@ class DummyDataset(Dataset):
         self.height = height
         self.width = width
         self.reversed = reversed
-
     def __len__(self):
         return self.length
 
@@ -107,6 +106,9 @@ def test_simple_raw_image_pipeline_min():
 
 def test_simple_jpg_image_pipeline():
     create_and_validate(500, 'jpg', False)
+
+def test_simple_jpg_image_pipeline_rev():
+    create_and_validate(500, 'jpg', True)
 
 def test_simple_jpg_image_pipeline_rev():
     create_and_validate(500, 'jpg', True)

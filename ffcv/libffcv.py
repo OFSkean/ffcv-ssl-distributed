@@ -30,6 +30,17 @@ def resize_crop(source, start_row, end_row, start_col, end_col, destination):
                   destination.ctypes.data,
                   destination.shape[0], destination.shape[1])
 
+ctypes_pad = lib.pad
+ctypes_pad.argtypes = 11 * [c_int64]
+
+def pad(source, start_row, end_row, start_col, end_col, destination):
+    ctypes_pad(0,
+                  source.ctypes.data,
+                  source.shape[0], source.shape[1],
+                  start_row, end_row, start_col, end_col,
+                  destination.ctypes.data,
+                  destination.shape[0], destination.shape[1])
+
 # Extract and define the interface of imdeocde
 ctypes_imdecode = lib.imdecode
 ctypes_imdecode.argtypes = [

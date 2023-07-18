@@ -101,12 +101,10 @@ else:
 libffcv = Extension('ffcv._libffcv',
                         **extension_kwargs)
 
-setup(name='ffcv',
-      version='1.0.1',
-      description=' FFCV: Fast Forward Computer Vision ',
-      author='MadryLab',
-      author_email='ffcv@mit.edu',
-      url='https://github.com/libffcv/ffcv',
+setup(name='ffcv-ssl-distributed',
+      version='1.0.2',
+      description=' FFCV fork with SSL and distributed training',
+      url='https://github.com/OFSkean/ffcv-ssl-distributed',
       license_files = ('LICENSE.txt',),
       packages=find_packages(),
       long_description=long_description,
@@ -121,4 +119,11 @@ setup(name='ffcv',
           'tqdm',
           'psutil',
           'numba',
-      ])
+          'matplotlib',
+          'imgcat',
+          'webdataset',
+          'submitit',
+          'torchmetrics',
+          'scipy'
+      ]
+)

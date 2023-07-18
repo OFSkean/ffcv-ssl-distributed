@@ -1,105 +1,133 @@
 """
-Random Erasing augmentation (https://arxiv.org/abs/1708.04896)
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# All rights reserved.
+# This source code is licensed under the license found in the
+# LICENSE file in the root directory of this source tree.
 """
 
-# Implementation inspired by fastai https://docs.fast.ai/vision.augment.html#randomerasing
-# fastai - Apache License 2.0 - Copyright (c) 2023 fast.ai
-
-import math
-import numpy as np
-from numpy.random import rand
 from typing import Callable, Optional, Tuple
+from ffcv.pipeline.allocation_query import AllocationQuery
+from ffcv.pipeline.operation import Operation
+from ffcv.pipeline.state import State
+from ffcv.pipeline.compiler import Compiler
 from dataclasses import replace
-
-from ..pipeline.compiler import Compiler
-from ..pipeline.allocation_query import AllocationQuery
-from ..pipeline.operation import Operation
-from ..pipeline.state import State
+import numpy as np
+import random
+from ffcv.utils import set_seed
+from .resized_crop import get_random_crop
 
 
 class RandomErasing(Operation):
-    """Random erasing data augmentation (https://arxiv.org/abs/1708.04896).
+    """Applies random erasing data augmentation with given probability and scale/ratio
 
+    Operates on raw arrays (not tensors).
+
+    @inproceedings{zhong2020random,
+    title={Random Erasing Data Augmentation},
+    author={Zhong, Zhun and Zheng, Liang and Kang, Guoliang and Li, Shaozi and Yang, Yi},
+    booktitle={Proceedings of the AAAI Conference on Artificial Intelligence (AAAI)},
+    year={2020}
+    }
     Parameters
     ----------
-    prob : float
-        Probability of applying on each image.
-    min_area : float
-        Minimum erased area as percentage of image size.
-    max_area : float
-        Maximum erased area as percentage of image size.
-    min_aspect : float
-        Minimum aspect ratio of erased area.
-    max_count : int
-        Maximum number of erased blocks per image. Erased Area is scaled by max_count.
-    fill_mean : Tuple[int, int, int], optional
-        The RGB color mean (ImageNet's (124, 116, 103) by default) to randomly fill the
-        erased area with. Should be the mean of dataset or pretrained dataset.
-    fill_std : Tuple[int, int, int], optional
-        The RGB color standard deviation (ImageNet's (58, 57, 57) by default) to randomly
-        fill the erased area with. Should be the st. dev of dataset or pretrained dataset.
-    fast_fill : bool
-        Default of True is ~2X faster by generating noise once per batch and randomly
-        selecting slices of the noise instead of generating unique noise per each image.
+    erase_prob : float
+        The probability to apply the masking
+    scale: tuple
+        The lower bound and upper bound of the scale
+    ratio: tuple
+        The lower bound and upper bound of the ratio
+    mean: tuple
+        The values to fill into the erased area
+    seed: (optional) int
+        The seed for sampling
     """
-    def __init__(self, prob: float, min_area: float = 0.02, max_area: float = 0.3,
-                 min_aspect: float = 0.3, max_count: int = 1,
-                 fill_mean: Tuple[int, int, int] = (124, 116, 103),
-                 fill_std: Tuple[int, int, int] = (58, 57, 57),
-                 fast_fill : bool = True):
+
+    def __init__(
+        self,
+        erase_prob: float = 0.5,
+        scale=(0.08, 0.4),
+        ratio=(0.3, 3),
+        mean=[128, 128, 128],
+        seed: int = None,
+    ):
         super().__init__()
-        self.prob = np.clip(prob, 0., 1.)
-        self.min_area = np.clip(min_area, 0., 1.)
-        self.max_area = np.clip(max_area, 0., 1.)
-        self.log_ratio = (math.log(np.clip(min_aspect, 0., 1.)), math.log(1/np.clip(min_aspect, 0., 1.)))
-        self.max_count = max_count
-        self.fill_mean = np.array(fill_mean)
-        self.fill_std = np.array(fill_std)
-        self.fast_fill = fast_fill
+        self.erase_prob = erase_prob
+        self.scale = scale
+        self.ratio = ratio
+        self.mean = mean
+        self.seed = seed
 
     def generate_code(self) -> Callable:
         my_range = Compiler.get_iterator()
-        prob = self.prob
-        min_area = self.min_area
-        max_area = self.max_area
-        log_ratio = self.log_ratio
-        max_count = self.max_count
-        fill_mean = self.fill_mean
-        fill_std = self.fill_std
-        fast_fill = self.fast_fill
+        erase_prob = self.erase_prob
 
-        def random_erase(images, *_):
-            if fast_fill:
-                noise = fill_mean + (fill_std * np.random.randn(images.shape[1], images.shape[2], images.shape[3])).astype(images.dtype)
+        scale = self.scale
+        ratio = self.ratio
+        seed = self.seed
+        mean = np.array(self.mean)
+        if isinstance(scale, tuple):
+            scale = np.array(scale)
+        if isinstance(ratio, tuple):
+            ratio = np.array(ratio)
+        if seed is None:
 
-            should_cutout = rand(images.shape[0]) < prob
-            for i in my_range(images.shape[0]):
-                if should_cutout[i]:
-                    count = np.random.randint(1, max_count) if max_count > 1 else 1
-                    for j in range(count):
-                        # Randomly select bounds
-                        area = np.random.uniform(min_area, max_area, 1) * images.shape[1] * images.shape[2] / count
-                        aspect = np.exp(np.random.uniform(log_ratio[0], log_ratio[1], 1))
-                        bound = (
-                            int(round(np.sqrt(area * aspect).item())),
-                            int(round(np.sqrt(area / aspect).item())),
-                        )
-                        # Select random erased area
-                        coord = (
-                            np.random.randint(0, max(1, images.shape[1] - bound[0])),
-                            np.random.randint(0, max(1, images.shape[2] - bound[1])),
-                        )
-                        # Fill image with random noise in-place
-                        if fast_fill:
-                            images[i, coord[0]:coord[0] + bound[0], coord[1]:coord[1] + bound[1]] =\
-                                noise[coord[0]:coord[0] + bound[0], coord[1]:coord[1] + bound[1]]
-                        else:
-                            noise = fill_mean + (fill_std * np.random.randn(bound[0], bound[1], images.shape[3])).astype(images.dtype)
-                            images[i, coord[0]:coord[0] + bound[0], coord[1]:coord[1] + bound[1]] = noise
+            def erase(images, _):
+                height, width = images.shape[-3:-1]
+
+                for dst_ix in my_range(len(images)):
+                    if random.uniform(0, 1) > erase_prob:
+                        continue
+                    i, j, h, w = get_random_crop(
+                        height,
+                        width,
+                        scale,
+                        ratio,
+                        np.random.rand(5),
+                        np.random.rand(5),
+                        np.random.rand(5),
+                        np.random.rand(5),
+                    )
+                    for channel in range(images.shape[-1]):
+                        images[dst_ix, i : i + h, j : j + w, channel] = mean[channel]
+                return images
+
+            erase.is_parallel = True
+            return erase
+
+        def erase(images, _, counter):
+            height, width = images.shape[-3:-1]
+            random.seed(seed + counter)
+            N = len(images)
+            r = np.zeros((N, 4, 5))
+            values = np.zeros(N)
+            for i in range(N):
+                values[i] = random.uniform(0, 1)
+                for j in range(4):
+                    for k in range(5):
+                        r[i, j, k] = random.uniform(0, 1)
+
+            for dst_ix in my_range(N):
+                if values[i] > erase_prob:
+                    continue
+                i, j, h, w = get_random_crop(
+                    height,
+                    width,
+                    scale,
+                    ratio,
+                    r[dst_ix, 0],
+                    r[dst_ix, 1],
+                    r[dst_ix, 2],
+                    r[dst_ix, 3],
+                )
+                for channel in range(images.shape[-1]):
+                    images[dst_ix, i : i + h, j : j + w, channel] = mean[channel]
             return images
 
-        random_erase.is_parallel = True
-        return random_erase
+        erase.with_counter = True
+        erase.is_parallel = True
+        return erase
 
-    def declare_state_and_memory(self, previous_state: State) -> Tuple[State, Optional[AllocationQuery]]:
-        return replace(previous_state, jit_mode=True), None
+    def declare_state_and_memory(
+        self, previous_state: State
+    ) -> Tuple[State, Optional[AllocationQuery]]:
+        return (replace(previous_state, jit_mode=True), None)

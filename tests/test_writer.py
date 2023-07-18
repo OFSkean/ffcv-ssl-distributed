@@ -4,7 +4,6 @@ from numpy.random import shuffle
 from torch.utils.data import Dataset
 import logging
 import os
-from assertpy import assert_that
 from tempfile import NamedTemporaryFile
 from multiprocessing import cpu_count
 

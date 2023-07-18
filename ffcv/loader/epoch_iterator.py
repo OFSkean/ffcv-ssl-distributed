@@ -34,6 +34,7 @@ class EpochIterator(Thread):
     def __init__(self, loader: 'Loader', order: Sequence[int]):
         super().__init__(daemon=True)
         self.loader: 'Loader' = loader
+        self.counter = 0
         self.order = order
         self.metadata = loader.reader.metadata
         self.current_batch_slot = 0
@@ -42,8 +43,7 @@ class EpochIterator(Thread):
         self.closed = False
         self.output_queue = Queue(self.loader.batches_ahead)
         self.terminate_event = Event()
-        self.memory_context = self.loader.memory_manager.schedule_epoch(
-            batches)
+        self.memory_context = self.loader.memory_manager.schedule_epoch(batches)
 
         if IS_CUDA:
             self.current_stream = ch.cuda.current_stream()

@@ -19,6 +19,7 @@ from .utils import chunks, is_power_of_2
 MIN_PAGE_SIZE = 1 << 21  # 2MiB, which is the most common HugePage size
 MAX_PAGE_SIZE = 1 << 32  # Biggest page size that will not overflow uint32
 
+
 def from_shard(shard, pipeline):
     # We import webdataset here so that it desn't crash if it's not required
     # (Webdataset is an optional depdency)

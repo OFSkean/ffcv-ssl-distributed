@@ -24,7 +24,6 @@ class DummyArrayDataset(Dataset):
     def __init__(self, n_samples, shape):
         self.n_samples = n_samples
         self.shape = shape
-
     def __len__(self):
         return self.n_samples
 

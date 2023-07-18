@@ -69,7 +69,9 @@ def pil_to_numpy(img:Image.Image) -> np.ndarray:
         offset += len(d)
     if s < 0:
         raise RuntimeError("encoder error %d in tobytes" % s)
-    return dataimport numpy as np
+    return data
+
+import numpy as np
 import numba
 import random
 from numba import types

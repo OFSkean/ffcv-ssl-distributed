@@ -8,7 +8,6 @@
 from typing import Callable, Tuple
 import numpy as np
 from abc import ABCMeta
-from ffcv.fields import rgb_image, ndarray
 from numba.typed import Dict
 
 from ffcv.pipeline.compiler import Compiler
@@ -21,13 +20,9 @@ from ffcv.pipeline.state import State
 from ffcv.pipeline.compiler import Compiler
 from ffcv.pipeline.allocation_query import AllocationQuery
 import random
-from ffcv.fields.rgb_image import (
-    SimpleRGBImageDecoder,
-)
 from numba import njit
+from ffcv.fields.rgb_image import SimpleRGBImageDecoder, RandomResizedCropRGBImageDecoder
 from ffcv.fields.basics import IntDecoder
-
-SimpleDecoder = SimpleRGBImageDecoder
 
 IMAGE_MODES = Dict()
 IMAGE_MODES['jpg'] = 0
@@ -163,7 +158,7 @@ def get_bottom_right_crop(height, width, _, ratio, seed=None, second_seed=None):
     delta_w = (width - c) // 2
     return 0, width - c, c, c
 
-class RandomResizedCrop(rgb_image.RandomResizedCropRGBImageDecoder):
+class RandomResizedCrop(RandomResizedCropRGBImageDecoder):
     """Decoder for :class:`~ffcv.fields.RGBImageField` that performs a Random crop and and a resize operation.
     It supports both variable and constant resolution datasets.
     Parameters
@@ -372,7 +367,7 @@ class RandomResizedCrop(rgb_image.RandomResizedCropRGBImageDecoder):
         )
 
 
-class LabelRandomResizedCrop(rgb_image.RandomResizedCropRGBImageDecoder):#IntDecoder, ndarray.NDArrayDecoder):
+class LabelRandomResizedCrop(RandomResizedCropRGBImageDecoder):#IntDecoder, ndarray.NDArrayDecoder):
     """Decoder for :class:`~ffcv.fields.RGBImageField` that performs a Random crop and and a resize operation.
     It supports both variable and constant resolution datasets.
     Parameters
@@ -535,7 +530,7 @@ class CornerCrop(RandomResizedCrop):
         elif corner == "bottom_right":
             self.get_crop = get_bottom_right_crop
 
-class PadRGBImageDecoder(rgb_image.SimpleRGBImageDecoder, metaclass=ABCMeta):
+class PadRGBImageDecoder(SimpleRGBImageDecoder, metaclass=ABCMeta):
     """Abstract decoder for :class:`~ffcv.fields.RGBImageField` that performs a padding.
 
     It supports both variable and constant resolution datasets. 

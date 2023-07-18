@@ -8,9 +8,7 @@ from .replace_label import ReplaceLabel
 from .normalize import NormalizeImage
 from .mixup import ImageMixup, LabelMixup, MixupToOneHot
 from .module import ModuleWrapper
-from .solarization import Solarization
-from .color_jitter import RandomBrightness, RandomContrast, RandomSaturation
-from .colorjitter import RandomColorJitter, LabelColorJitter
+from .color_jitter import RandomBrightness, RandomContrast, RandomSaturation, RandomColorJitter, LabelColorJitter
 from .grayscale import RandomGrayscale, LabelGrayscale
 from .solarization import RandomSolarization, LabelSolarization
 from .translate import RandomTranslate, LabelTranslate
@@ -28,8 +26,7 @@ __all__ = ['ToTensor', 'ToDevice', 'ToTorchImage', 'Convert', 'View',
            'ImageMixup', 'LabelMixup', 'MixupToOneHot',
            'ModuleWrapper', 
            'Solarization',
-           'RandomBrightness', 'RandomContrast', 'RandomSaturation',
-           'RandomColorJitter', 'LabelColorJitter',
+           'RandomBrightness', 'RandomContrast', 'RandomSaturation', 'RandomColorJitter', 'LabelColorJitter',
            'RandomGrayscale', 'LabelGrayscale',
            'RandomSolarization', 'LabelSolarization',
            'RandomTranslate', 'LabelTranslate',

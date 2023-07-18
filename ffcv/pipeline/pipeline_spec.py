@@ -2,8 +2,6 @@ import torch as ch
 
 from typing import List, Union
 from .operation import Operation
-from ..transforms.module import ModuleWrapper
-from ..transforms import ToTensor
 
 class PipelineSpec:
 
@@ -26,6 +24,8 @@ class PipelineSpec:
         return self.__repr__()
 
     def accept_decoder(self, Decoder, output_name):
+        from ..transforms import ModuleWrapper, ToTensor
+        
         if not isinstance(self.source, str) and self.decoder is not None:
             raise ValueError("Source can't be a node and also have a decoder")
 

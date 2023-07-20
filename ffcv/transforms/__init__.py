@@ -2,7 +2,7 @@ from .ops import ToTensor, ToDevice, ToTorchImage, Convert, View
 from .flip import RandomHorizontalFlip, RandomVerticalFlip
 from .cutout import Cutout, RandomCutout
 from .common import Squeeze
-from .resized_crop import RandomResizedCrop, LabelRandomResizedCrop, PadRGBImageDecoder, CornerCrop, CenterCrop
+from .resized_crop import RandomResizedCrop, LabelRandomResizedCrop, CornerCrop, CenterCrop
 from .poisoning import Poison
 from .replace_label import ReplaceLabel
 from .normalize import NormalizeImage

@@ -93,6 +93,9 @@ class Loader:
         Number of batches prepared in advance; balances latency and memory.
     recompile : bool
         Recompile every iteration. This is necessary if the implementation of some augmentations are expected to change during training.
+    custom_field_mapper : Mapping[str, str]
+        maps the extra given pipelines to the ones present in the saved dataset. useful is saved dataset only has label and image, but you
+        need to make multiple augmentations based on image
     """
 
     def __init__(
@@ -110,7 +113,7 @@ class Loader:
         drop_last: bool = True,
         batches_ahead: int = 3,
         recompile: bool = False,  # Recompile at every epoch
-        custom_field_mapper: int = None,
+        custom_field_mapper: Mapping[str, str] = None,
     ):
 
         if distributed and order != OrderOption.SEQUENTIAL and (seed is None):
@@ -174,7 +177,6 @@ class Loader:
         memory_read = self.memory_manager.compile_reader()
         self.next_epoch: int = 0
 
-        self.pipelines = {}
         self.pipeline_specs = {}
         self.field_name_to_f_ix = {}
  
@@ -195,49 +197,20 @@ class Loader:
                 raise ValueError(msg)
             custom_pipeline_specs[output_name] = spec
 
-        # We merge the custom pipeline specs with the default ones
+        # Adding the default pipelines
         for f_ix, (field_name, field) in enumerate(self.reader.handlers.items()):
             if custom_field_mapper is not None and field_name in custom_field_mapper.keys():
                 f_ix = self.field_name_to_f_ix[custom_field_mapper[field_name]] 
             self.field_name_to_f_ix[field_name] = f_ix
-            DecoderClass = field.get_decoder_class()
 
-
-            try:
-                operations = pipelines[field_name]
-                # We check if the user disabled this field
-                if operations is None:
-                    continue
-                if not isinstance(operations[0], DecoderClass):
-                    msg = "The first operation of the pipeline for "
-                    msg += f"'{field_name}' has to be a subclass of "
-                    msg += f"{DecoderClass}"
-                    raise ValueError(msg)
-            except KeyError:
-                msg = f"{field_name}, please define a pipeline"
-                raise ValueError(msg)
-            
-            # we loop over the operations of this field
-            # and wrap if the op is a torch module
-            for i, op in enumerate(operations):
-                assert isinstance(op, (ch.nn.Module, Operation)), op
-                if isinstance(op, ch.nn.Module):
-                    operations[i] = ModuleWrapper(op)
-                operations[i].accept_field(field)
-                operations[i].accept_globals(
-                    self.reader.metadata[f"f{f_ix}"], memory_read
-                )
-                
-            if field_name not in custom_pipeline_specs:
+            if field_name not in custom_pipeline_specs and field_name not in pipelines:
                 # We add the default pipeline
-                if field_name not in pipelines:
-                    self.pipelines[field_name] = Pipeline(operations)
-                    self.pipeline_specs[field_name] = PipelineSpec(field_name)
+                self.pipeline_specs[field_name] = PipelineSpec(field_name)
             else:
-                self.pipelines[field_name] = Pipeline(operations)
+                # otherwise use the custom one
                 self.pipeline_specs[field_name] = custom_pipeline_specs[field_name]
 
-        # We add the remaining custom fields after the default ones
+        # We add the custom fields after the default ones
         # This is to preserve backwards compatibility and make sure the order
         # is intuitive
         for field_name, spec in custom_pipeline_specs.items():

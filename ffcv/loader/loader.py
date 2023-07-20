@@ -182,6 +182,14 @@ class Loader:
  
         custom_pipeline_specs = {}
 
+        # create copy of pipelines here to avoid race conditions due to pop()
+        # deepcopy(pipelines) is unsuitable due to https://stackoverflow.com/questions/72921347/how-to-deepcopy-with-multiple-references-onto-same-object-becoming-independent
+        # which is an issue for instance when two outputs use the same augmentation pipeline
+        copied_pipelines = {}
+        for output_name, spec in pipelines.items():
+            copied_pipelines[output_name] = deepcopy(spec)
+        pipelines = copied_pipelines
+
         # Creating PipelineSpec objects from the pipeline dict passed
         # by the user
         for output_name, spec in pipelines.items():
